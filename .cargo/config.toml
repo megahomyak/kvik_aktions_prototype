@@ -1,0 +1,2 @@
+[build]
+target-dir = "/root/rustc_target_dirs/kvik_aktions_prototype/target"

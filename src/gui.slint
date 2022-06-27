@@ -1,0 +1,135 @@
+slint::slint!{
+    import { TabWidget, LineEdit, ListView, Button, TextEdit } from "std-widgets.slint";
+
+    export struct ListItem := {
+        text: string,
+    }
+
+    KvikAktions := Window {
+        forward-focus: query;
+        preferred-height: 10cm;
+        preferred-width: 20cm;
+        callback start-voice-recording();
+        callback stop-voice-recording();
+        callback update-matches(string);
+        callback run-script(string);
+        property<bool> recording-the-voice: false;
+        property<string> popup-text;
+        property<[ListItem]> matches;
+        callback show-message(string);
+        show-message(text) => {
+            popup-text = text;
+            popup-layout.show();
+        }
+        callback reset-query;
+        reset-query => {
+            query.text = "";
+        }
+        popup-layout := PopupWindow {
+            y: parent.height - 1cm;
+            width: popup-text-element.width;
+            height: 1cm;
+            Rectangle {
+                color: yellow;
+                popup-text-element := Text {
+                    vertical-alignment: TextVerticalAlignment.center;
+                    text: popup-text;
+                    height: 100%;
+                }
+            }
+        }
+        VerticalLayout {
+            use-cases := TabWidget {
+                Tab {
+                    title: "Keyboard Control";
+                    VerticalLayout {
+                        padding: 2mm;
+                        spacing: 2mm;
+                        Text {
+                            text: "Capitalized letters in actions' names are required, and also no capitalized letter chain should be the beginning of another chain";
+                        }
+                        query := LineEdit {
+                            height: 1cm;
+                            has-focus: true;
+                            font-size: 0.5cm;
+                            placeholder-text: "Letter-match mode";
+                            edited => {
+                                update-matches(query.text);
+                            }
+                        }
+                        ListView {
+                            for data in matches : Text {
+                                height: 1cm;
+                                vertical-alignment: TextVerticalAlignment.center;
+                                x: 0.25cm;
+                                font-size: 0.5cm;
+                                text: data.text;
+                            }
+                        }
+                    }
+                }
+                Tab {
+                    title: "Touchscreen Control";
+                    VerticalLayout {
+                        padding: 2mm;
+                        spacing: 2mm;
+                        Text {
+                            text: "The same as with a keyboard, except that the keyboard is virtual. Two buttons should be provided at the bottom of the screen to invoke the letter-matching and word-matching handlers.\nNot implemented for now.";
+                        }
+                        HorizontalLayout {
+                            Button {
+                                height: 1cm;
+                                text: "Letter-match";
+                            }
+                            Button {
+                                height: 1cm;
+                                text: "Word-match";
+                            }
+                        }
+                    }
+                }
+                Tab {
+                    title: "Voice Control";
+                    VerticalLayout {
+                        padding: 2mm;
+                        spacing: 2mm;
+                        alignment: center;
+                        Text {
+                            text: "Should only perform the full-word matches. If a collision occurs, it either fails or asks to choose between the matched items.\nNot implemented for now.";
+                        }
+                        record-voice-button := Button {
+                            text: recording-the-voice ? "Stop recording" : "Record";
+                            height: 3cm;
+                            font-size: 1cm;
+                            clicked => {
+                                if (recording-the-voice) {
+                                    recording-the-voice = false;
+                                    stop-voice-recording();
+                                } else {
+                                    recording-the-voice = true;
+                                    start-voice-recording();
+                                }
+                            }
+                        }
+                    }
+                }
+                Tab {
+                    title: "Automated Control";
+                    VerticalLayout {
+                        padding: 2mm;
+                        spacing: 2mm;
+                        script-field := TextEdit {
+                            text: "Hello, World!\n1 = # checking if the invocation output (it is on top of the stack right now) equals 1\nHello, World!\n.";
+                        }
+                        Button {
+                            text: "Run";
+                            clicked => {
+                                run-script(script-field.text);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
