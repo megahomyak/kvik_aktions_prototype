@@ -7,5 +7,6 @@ edition = "2021"
 
 [dependencies]
 slint = "0.2.4"
+sublime_fuzzy = "0.7.0"
 
 [features]

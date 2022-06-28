@@ -1,3 +1,4 @@
+use std::cmp::Reverse;
 use std::rc::Rc;
 
 include!("gui.slint");
@@ -40,6 +41,11 @@ fn set_matches<'action, Callback: 'action>(
     );
 }
 
+struct MatchedAction<'action, Callback> {
+    action: &'action mut Action<Callback>,
+    match_: sublime_fuzzy::Match,
+}
+
 fn main() {
     let ui = KvikAktions::new();
     let mut all_actions = vec![
@@ -50,24 +56,53 @@ fn main() {
     ];
     let matches = Rc::new(slint::VecModel::<ListItem>::from(vec![]));
     set_matches(&matches, all_actions.iter_mut());
+
     ui.on_update_matches({
         let matches = matches.clone();
         let ui = ui.as_weak().unwrap();
         move |query| {
-            let query = query.to_uppercase();
-            let mut matching_actions = vec![];
-            for action in &mut all_actions {
-                if action.shortcut == query {
-                    (action.callback)();
+            if ui.get_query_mode_letters() {
+                let mut matching_actions = vec![];
+                let query = query.to_uppercase();
+                for action in &mut all_actions {
+                    if action.shortcut == query {
+                        (action.callback)();
+                        set_matches(&matches, all_actions.iter_mut());
+                        ui.invoke_reset_query();
+                        return;
+                    }
+                    if action.shortcut.starts_with(&query) {
+                        matching_actions.push(action);
+                    }
+                }
+                set_matches(&matches, matching_actions.into_iter());
+            } else {
+                let mut matching_actions = vec![];
+                if query.is_empty() {
+                    set_matches(&matches, all_actions.iter_mut());
+                    return;
+                }
+                for action in &mut all_actions {
+                    if let Some(match_) = sublime_fuzzy::best_match(&query, action.name) {
+                        matching_actions.push(MatchedAction { action, match_ });
+                    }
+                }
+                if matching_actions.len() == 1 {
+                    (matching_actions.first_mut().unwrap().action.callback)();
                     set_matches(&matches, all_actions.iter_mut());
                     ui.invoke_reset_query();
                     return;
                 }
-                if action.shortcut.starts_with(&query) {
-                    matching_actions.push(action);
-                }
+                matching_actions.sort_unstable_by_key(|matching_action| {
+                    Reverse(matching_action.match_.score())
+                });
+                set_matches(
+                    &matches,
+                    matching_actions
+                        .into_iter()
+                        .map(|matching_action| matching_action.action),
+                );
             }
-            set_matches(&matches, matching_actions.into_iter());
         }
     });
     ui.set_matches(matches.into());

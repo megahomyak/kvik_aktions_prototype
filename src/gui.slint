@@ -14,6 +14,7 @@ slint::slint!{
         callback update-matches(string);
         callback run-script(string);
         property<bool> recording-the-voice: false;
+        property<bool> query-mode-letters: true;
         property<string> popup-text;
         property<[ListItem]> matches;
         callback show-message(string);
@@ -46,14 +47,18 @@ slint::slint!{
                         padding: 2mm;
                         spacing: 2mm;
                         Text {
-                            text: "Capitalized letters in actions' names are required, and also no capitalized letter chain should be the beginning of another chain";
+                            text: "Capitalized letters in actions' names are required, and also no capitalized letter chain should be the beginning of another chain. Press Enter to switch the match modes";
                         }
                         query := LineEdit {
                             height: 1cm;
                             has-focus: true;
                             font-size: 0.5cm;
-                            placeholder-text: "Letter-match mode";
+                            placeholder-text: query-mode-letters ? "Letter-match mode" : "Word-match mode";
                             edited => {
+                                update-matches(query.text);
+                            }
+                            accepted => {
+                                query-mode-letters = !query-mode-letters;
                                 update-matches(query.text);
                             }
                         }
