@@ -8,7 +8,7 @@ struct Action<Callback> {
     callback: Callback,
 }
 
-impl<Callback: FnMut()> Action<Callback> {
+impl<Callback: Fn()> Action<Callback> {
     pub fn new(name: &'static str, callback: Callback) -> Self {
         Self {
             name,
@@ -18,7 +18,7 @@ impl<Callback: FnMut()> Action<Callback> {
     }
 }
 
-fn make_message_action(ui: &KvikAktions, text: &'static str) -> Action<Box<dyn FnMut()>> {
+fn make_message_action(ui: &KvikAktions, text: &'static str) -> Action<Box<dyn Fn()>> {
     Action::new(text, {
         let ui = ui.as_weak().unwrap();
         Box::new(move || {
@@ -54,7 +54,7 @@ fn main() {
                 .collect::<String>()
                 .to_uppercase();
             let mut matching_actions = vec![];
-            for action in &mut all_actions {
+            for action in &all_actions {
                 if action.shortcut == query.to_uppercase() {
                     (action.callback)();
                     matches.set_vec(
@@ -83,5 +83,26 @@ fn main() {
         }
     });
     ui.set_matches(matches.into());
+
+    ui.on_run_script(|script: slint::SharedString| {
+        for line in script.lines() {
+            let line = match line.split_once("#") {
+                None => &line,
+                Some((command, _commentary)) => command,
+            };
+            let shortcut = line.chars().filter(|char| char.is_uppercase()).collect::<String>();
+            if shortcut.len() == 0 {
+
+            } else {
+                for action in &all_actions {
+                    if action.shortcut == shortcut {
+                        (action.callback)();
+                        break;
+                    }
+                }
+            }
+        }
+    });
+
     ui.run();
 }
