@@ -27,6 +27,19 @@ fn make_message_action(ui: &KvikAktions, text: &'static str) -> Action<Box<dyn F
     })
 }
 
+fn set_matches<'action, Callback: 'action>(
+    matches: &Rc<slint::VecModel<ListItem>>,
+    matching_actions: impl Iterator<Item = &'action mut Action<Callback>>,
+) {
+    matches.set_vec(
+        matching_actions
+            .map(|action| ListItem {
+                text: action.name.into(),
+            })
+            .collect::<Vec<_>>(),
+    );
+}
+
 fn main() {
     let ui = KvikAktions::new();
     let mut all_actions = vec![
@@ -36,50 +49,25 @@ fn main() {
         make_message_action(&ui, "CAPITALIZED"),
     ];
     let matches = Rc::new(slint::VecModel::<ListItem>::from(vec![]));
-    matches.set_vec(
-        all_actions
-            .iter()
-            .map(|action| ListItem {
-                text: action.name.into(),
-            })
-            .collect::<Vec<_>>(),
-    );
+    set_matches(&matches, all_actions.iter_mut());
     ui.on_update_matches({
         let matches = matches.clone();
         let ui = ui.as_weak().unwrap();
         move |query| {
-            let query = query
-                .chars()
-                .filter(|char| char.is_alphabetic())
-                .collect::<String>()
-                .to_uppercase();
+            let query = query.to_uppercase();
             let mut matching_actions = vec![];
             for action in &mut all_actions {
-                if action.shortcut == query.to_uppercase() {
+                if action.shortcut == query {
                     (action.callback)();
-                    matches.set_vec(
-                        all_actions
-                            .iter()
-                            .map(|action| ListItem {
-                                text: action.name.into(),
-                            })
-                            .collect::<Vec<_>>(),
-                    );
+                    set_matches(&matches, all_actions.iter_mut());
                     ui.invoke_reset_query();
                     return;
                 }
-                if action.shortcut.starts_with(&query.to_uppercase()) {
+                if action.shortcut.starts_with(&query) {
                     matching_actions.push(action);
                 }
             }
-            matches.set_vec(
-                matching_actions
-                    .iter()
-                    .map(|action| ListItem {
-                        text: action.name.into(),
-                    })
-                    .collect::<Vec<_>>(),
-            );
+            set_matches(&matches, matching_actions.into_iter());
         }
     });
     ui.set_matches(matches.into());
